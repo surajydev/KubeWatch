@@ -1,0 +1,121 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubewatch-alerts
+  namespace: kubewatch
+  labels:
+    app: kubewatch-app
+    release: monitoring
+spec:
+  groups:
+    # ============================================================
+    # Application Availability Alerts
+    # ============================================================
+    - name: kubewatch-app-availability
+      rules:
+        - alert: KubeWatchAppDown
+          expr: up{job="kubewatch-app"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            application: kubewatch-app
+          annotations:
+            summary: "KubeWatch application is down"
+            description: "The KubeWatch application target {{ $labels.instance }} has been down for more than 1 minute."
+
+        - alert: KubeWatchAppHighErrorRate
+          expr: |
+            (
+              sum(rate(http_server_requests_seconds_count{application="kubewatch-app", status=~"5.."}[5m]))
+              /
+              sum(rate(http_server_requests_seconds_count{application="kubewatch-app"}[5m]))
+            ) > 0.1
+          for: 2m
+          labels:
+            severity: warning
+            application: kubewatch-app
+          annotations:
+            summary: "High HTTP 5xx error rate on KubeWatch"
+            description: "More than 10% of HTTP requests are returning 5xx errors over the last 5 minutes. Current rate: {{ $value | humanizePercentage }}"
+
+    # ============================================================
+    # Resource Utilization Alerts
+    # ============================================================
+    - name: kubewatch-resource-alerts
+      rules:
+        - alert: KubeWatchHighCPU
+          expr: |
+            (
+              sum(rate(container_cpu_usage_seconds_total{namespace="kubewatch", container="kubewatch-app"}[5m]))
+              /
+              sum(kube_pod_container_resource_limits{namespace="kubewatch", container="kubewatch-app", resource="cpu"})
+            ) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+            application: kubewatch-app
+          annotations:
+            summary: "KubeWatch app CPU utilization is high"
+            description: "CPU utilization has exceeded 80% of the limit for 5 minutes. Current: {{ $value | humanizePercentage }}"
+
+        - alert: KubeWatchHighMemory
+          expr: |
+            (
+              sum(container_memory_working_set_bytes{namespace="kubewatch", container="kubewatch-app"})
+              /
+              sum(kube_pod_container_resource_limits{namespace="kubewatch", container="kubewatch-app", resource="memory"})
+            ) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+            application: kubewatch-app
+          annotations:
+            summary: "KubeWatch app memory utilization is high"
+            description: "Memory utilization has exceeded 85% of the limit for 5 minutes. Current: {{ $value | humanizePercentage }}"
+
+    # ============================================================
+    # Pod Health Alerts
+    # ============================================================
+    - name: kubewatch-pod-alerts
+      rules:
+        - alert: KubeWatchPodRestarting
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="kubewatch", container="kubewatch-app"}[1h]) > 3
+          for: 0m
+          labels:
+            severity: critical
+            application: kubewatch-app
+          annotations:
+            summary: "KubeWatch pod is restarting frequently"
+            description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour."
+
+        - alert: KubeWatchPodNotReady
+          expr: |
+            kube_pod_status_ready{namespace="kubewatch", condition="true"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            application: kubewatch-app
+          annotations:
+            summary: "KubeWatch pod is not ready"
+            description: "Pod {{ $labels.pod }} has been in a not-ready state for more than 5 minutes."
+
+    # ============================================================
+    # JVM Alerts
+    # ============================================================
+    - name: kubewatch-jvm-alerts
+      rules:
+        - alert: KubeWatchJVMHeapHigh
+          expr: |
+            (
+              jvm_memory_used_bytes{application="kubewatch-app", area="heap"}
+              /
+              jvm_memory_max_bytes{application="kubewatch-app", area="heap"}
+            ) > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            application: kubewatch-app
+          annotations:
+            summary: "KubeWatch JVM heap usage is high"
+            description: "JVM heap usage has exceeded 90% on {{ $labels.instance }}. Current: {{ $value | humanizePercentage }}"

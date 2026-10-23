@@ -1,0 +1,144 @@
+# Custom values for kube-prometheus-stack Helm chart
+# Chart: prometheus-community/kube-prometheus-stack
+# Docs: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+
+# ============================================================
+# Prometheus Configuration
+# ============================================================
+prometheus:
+  prometheusSpec:
+    # Scrape interval
+    scrapeInterval: "15s"
+    evaluationInterval: "15s"
+    retention: "7d"
+
+    # Resource limits for Prometheus
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+
+    # Discover ServiceMonitors across all namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    serviceMonitorSelector: {}
+
+    # Discover PrometheusRules across all namespaces
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+    ruleSelector: {}
+
+    # Storage (optional - for minikube use emptyDir)
+    storageSpec: {}
+
+# ============================================================
+# Grafana Configuration
+# ============================================================
+grafana:
+  enabled: true
+  adminUser: admin
+  adminPassword: kubewatch-admin
+
+  # Default dashboards
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: "browser"
+
+  # Data source auto-provisioning
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+      label: grafana_dashboard
+      folderAnnotation: grafana_folder
+    datasources:
+      enabled: true
+      searchNamespace: ALL
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "300m"
+      memory: "512Mi"
+
+  # Service type for local access
+  service:
+    type: ClusterIP
+
+# ============================================================
+# Alertmanager Configuration
+# ============================================================
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
+
+  config:
+    global:
+      resolve_timeout: "5m"
+
+    route:
+      receiver: "default-receiver"
+      group_by: ["alertname", "namespace"]
+      group_wait: "10s"
+      group_interval: "5m"
+      repeat_interval: "1h"
+      routes:
+        - match:
+            severity: critical
+          receiver: "critical-receiver"
+          group_wait: "5s"
+
+    receivers:
+      - name: "default-receiver"
+        webhook_configs:
+          - url: "http://alertmanager-webhook:9095/webhook"
+            send_resolved: true
+      - name: "critical-receiver"
+        webhook_configs:
+          - url: "http://alertmanager-webhook:9095/webhook"
+            send_resolved: true
+
+    inhibit_rules:
+      - source_matchers:
+          - severity = critical
+        target_matchers:
+          - severity = warning
+        equal: ["alertname", "namespace"]
+
+# ============================================================
+# Node Exporter (for node-level metrics)
+# ============================================================
+nodeExporter:
+  enabled: true
+
+# ============================================================
+# kube-state-metrics (for Kubernetes object metrics)
+# ============================================================
+kubeStateMetrics:
+  enabled: true
+
+# ============================================================
+# Default PrometheusRules
+# ============================================================
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    general: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesSystem: true
+    node: true
+    prometheus: true

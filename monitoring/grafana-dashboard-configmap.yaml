@@ -1,0 +1,245 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubewatch-grafana-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app: kubewatch-app
+data:
+  kubewatch-dashboard.json: |-
+    {
+      "annotations": {
+        "list": []
+      },
+      "description": "KubeWatch Application Monitoring Dashboard",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "Application Health",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } }, "type": "value" }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+          "id": 1,
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "title": "Application Status",
+          "type": "stat",
+          "targets": [
+            { "expr": "up{job=\"kubewatch-app\"}", "legendFormat": "{{instance}}", "refId": "A" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 3 },
+                  { "color": "red", "value": 5 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+          "id": 2,
+          "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "title": "Running Pods",
+          "type": "stat",
+          "targets": [
+            { "expr": "count(kube_pod_status_ready{namespace=\"kubewatch\", condition=\"true\"})", "legendFormat": "Ready Pods", "refId": "A" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+          "id": 3,
+          "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "title": "Pod Restarts (Last 1h)",
+          "type": "stat",
+          "targets": [
+            { "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"kubewatch\"}[1h]))", "legendFormat": "Restarts", "refId": "A" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "percentunit" } },
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+          "id": 4,
+          "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "title": "Error Rate (5xx/total)",
+          "type": "stat",
+          "targets": [
+            { "expr": "sum(rate(http_server_requests_seconds_count{application=\"kubewatch-app\", status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{application=\"kubewatch-app\"}[5m]))", "legendFormat": "Error Rate", "refId": "A" }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+          "id": 101,
+          "title": "HTTP Metrics",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 20 } } },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+          "id": 5,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "HTTP Request Rate (per second)",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "sum(rate(http_server_requests_seconds_count{application=\"kubewatch-app\"}[1m])) by (uri)", "legendFormat": "{{uri}}", "refId": "A" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 20 } } },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+          "id": 6,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "HTTP Response Latency (p95)",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"kubewatch-app\"}[5m])) by (le, uri))", "legendFormat": "p95 {{uri}}", "refId": "A" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 20 } } },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+          "id": 7,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "HTTP 4xx & 5xx Responses (per second)",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "sum(rate(http_server_requests_seconds_count{application=\"kubewatch-app\", status=~\"4..\"}[1m])) by (uri, status)", "legendFormat": "4xx {{uri}} {{status}}", "refId": "A" },
+            { "expr": "sum(rate(http_server_requests_seconds_count{application=\"kubewatch-app\", status=~\"5..\"}[1m])) by (uri, status)", "legendFormat": "5xx {{uri}} {{status}}", "refId": "B" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 20 } } },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+          "id": 8,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "Custom Metrics - Requests & Errors",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "rate(kubewatch_requests_total{application=\"kubewatch-app\"}[1m])", "legendFormat": "Demo Requests/s", "refId": "A" },
+            { "expr": "rate(kubewatch_errors_total{application=\"kubewatch-app\"}[1m])", "legendFormat": "Demo Errors/s", "refId": "B" }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+          "id": 102,
+          "title": "JVM Metrics",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 30 } } },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+          "id": 9,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "JVM Heap Memory",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "jvm_memory_used_bytes{application=\"kubewatch-app\", area=\"heap\"}", "legendFormat": "Used {{id}}", "refId": "A" },
+            { "expr": "jvm_memory_max_bytes{application=\"kubewatch-app\", area=\"heap\"}", "legendFormat": "Max {{id}}", "refId": "B" },
+            { "expr": "jvm_memory_committed_bytes{application=\"kubewatch-app\", area=\"heap\"}", "legendFormat": "Committed {{id}}", "refId": "C" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 30 } } },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+          "id": 10,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "JVM Non-Heap Memory",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "jvm_memory_used_bytes{application=\"kubewatch-app\", area=\"nonheap\"}", "legendFormat": "Used {{id}}", "refId": "A" },
+            { "expr": "jvm_memory_committed_bytes{application=\"kubewatch-app\", area=\"nonheap\"}", "legendFormat": "Committed {{id}}", "refId": "B" }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+          "id": 103,
+          "title": "Kubernetes Resources",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 20 } } },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+          "id": 11,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "Pod CPU Usage",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"kubewatch\", container=\"kubewatch-app\"}[5m])) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 20 } } },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+          "id": 12,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "Pod Memory Usage",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "container_memory_working_set_bytes{namespace=\"kubewatch\", container=\"kubewatch-app\"}", "legendFormat": "{{pod}}", "refId": "A" }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["kubewatch", "spring-boot", "kubernetes"],
+      "templating": { "list": [] },
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "KubeWatch Application Dashboard",
+      "uid": "kubewatch-app-dashboard",
+      "version": 1
+    }
